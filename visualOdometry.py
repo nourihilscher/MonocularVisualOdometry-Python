@@ -3,7 +3,6 @@ import numpy as np
 from featureExtractor import FeatureExtractor
 
 
-
 class VO:
     img1 = None
     img2 = None
@@ -15,12 +14,15 @@ class VO:
     id = 0
     pose = None
 
-    def __init__(self, n_features=3000, grey=False, brute_force=True, filter_matches=True, filter_threshold=0.8, camera_matrix = None):
+    def __init__(self, camera_matrix, n_features=3000, grey=False, brute_force=True, filter_matches=True, filter_threshold=0.8, kitti_pose_path=None):
         self.extractor = FeatureExtractor(n_features, grey, brute_force, filter_matches, filter_threshold)
         self.cameraMatrix = camera_matrix
-        with open("videos/KITTI_SEQ/poses/00.txt") as f:
-            self.pose = f.readlines()
+        if kitti_pose_path is not None:
+            with open(kitti_pose_path, 'r') as f:
+                self.pose = f.readlines()
 
+    # It is not possible to obtain a trajectory estimate without drift when using only one camera.
+    # For monocular VO we are sort of cheating here
     def get_absolute_scale(self):
         pose = self.pose[self.id - 1].strip().split()
         x_prev = float(pose[3])
@@ -36,9 +38,23 @@ class VO:
 
         return np.linalg.norm(true_vect - prev_vect)
 
-    def processFrame(self, img, display):
-        self.id += 1
+    def computeEssentialMatrix(self, pt1, pt2):
+        return cv2.findEssentialMat(pt1, pt2, self.cameraMatrix[:, :3], cv2.RANSAC, 0.999, 1.0)
+
+    def recoverPose(self, E, pt1, pt2, mask=None):
+        return cv2.recoverPose(E, pt1, pt2, self.cameraMatrix[:, :3], mask=mask)
+
+    # Inline visualization of matched keypoints
+    def visualizeMatches(self, keypoints1, keypoints2):
+        img = self.img2.copy()
+        for idx in range(0, keypoints1.shape[0]):
+            cv2.circle(img, (int(keypoints2[idx, 0]), int(keypoints2[idx, 1])), color=(0, 255, 0), radius=2)
+            cv2.line(img, (int(keypoints1[idx, 0]), int(keypoints1[idx, 1])), (int(keypoints2[idx, 0]), int(keypoints2[idx, 1])), (255, 0, 0), 1)
+        cv2.imshow("MonocularVisualOdometry", img)
+
+    def processFrame(self, img):
         if self.img1 is None:
+            self.id += 1
             self.img1 = img
             return
         else:
@@ -47,18 +63,21 @@ class VO:
             key2, des2 = self.extractor.computeDescriptors(self.img2)
             pt1, pt2, matches = self.extractor.matchKeypointsFromDescriptors(key1, des1, key2, des2)
 
+            # Ensure we are having enough matches to calculate essential matrix with 8 point algorithm
+            if pt1.shape[0] < 8:
+                return
 
-            #TODO: Check whether camera matrix is none
-            E, mask = cv2.findEssentialMat(pt1, pt2, self.cameraMatrix[:, :3], cv2.RANSAC, 0.999, 1.0, None)
-            #TODO: Input mask and camera matrix
-            #TODO Update R and t
-            z, R_curr, t_curr, mask = cv2.recoverPose(E, pt1, pt2, self.cameraMatrix[:, :3])
-            print(sum(mask))
+            E, mask = self.computeEssentialMatrix(pt1, pt2)
+            self.visualizeMatches(pt1[mask.flatten() == 1], pt2[mask.flatten() == 1])
+            _, R_curr, t_curr, _ = self.recoverPose(E, pt1, pt2, mask)
 
-            self.t = self.t + self.get_absolute_scale() * np.dot(self.R, t_curr)
+            scale = 1
+            if self.pose is not None:
+                scale = self.get_absolute_scale()
+                self.id += 1
+            self.t = self.t + scale * np.dot(self.R, t_curr)
             self.R = np.dot(self.R, R_curr)
 
             cv2.circle(self.trajectory, (int(self.t[0, 0]), int(self.t[2, 0])), 1, (255, 0, 0), 2)
             cv2.imshow("Trajectory", self.trajectory)
             self.img1 = self.img2
-

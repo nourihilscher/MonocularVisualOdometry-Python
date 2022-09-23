@@ -4,19 +4,9 @@ import argparse
 from visualOdometry import VO
 from helpers import KITTICameraMatrixFromTXT
 
-
-# TODO: VO: Check whether camera matrix is non and parse to findEssentialMat in correct format
-# TODO: VO: Input mask and camera matrix
-# TODO: VO: Update R and t and trajectory
-# TODO: Display trajectory
-# TODO: Change video/image frames to Greyscale
-# TODO: Import scale parameter from calibration file btw. estimate scale parameter from frames
-
-# TODO: Add inframe matching
-# TODO: Compute EssentialMatrixTransform and RT from EssentialMatrix
-# TODO: Remove inliers
-# TODO: Compute Trajectory from RT
-# TODO: Visualize Trajectory
+# TODO: Refactor main to work with videos and KITTI
+# TODO: Refactor visualOdometry and add inplace visualization and display trajectory with image frame in same image
+# TODO: Refactor featureExtractor
 
 # TODO: Image calibration and Camera Matrix computation
 # TODO: 3D point mapping and storage
@@ -27,13 +17,14 @@ if __name__ == '__main__':
     # parser.add_argument("--kitti", )
     image_folder = "videos/KITTI_SEQ/00/image_2"
     camera_matrix_file = "videos/KITTI_SEQ/00/calib.txt"
+    kitti_pose_path = "videos/KITTI_SEQ/poses/00.txt"
     camera_matrix = KITTICameraMatrixFromTXT(camera_matrix_file, 0)
     images = sorted(os.listdir("videos/KITTI_SEQ/00/image_2"))
-    vo = VO(camera_matrix=camera_matrix)
+    vo = VO(camera_matrix, kitti_pose_path=kitti_pose_path)
+
     for image in images:
         img = cv2.imread(os.path.join(image_folder, image))
-        vo.processFrame(img, display=True)
-        cv2.imshow("MonocularVisualOdometry", img)
+        vo.processFrame(img)
         if cv2.waitKey(25) & 0xFF == ord('q'):
             break
     cv2.destroyAllWindows()

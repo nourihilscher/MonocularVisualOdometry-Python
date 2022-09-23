@@ -60,7 +60,3 @@ class FeatureExtractor:
         kp1, des1 = self.computeDescriptors(img1)
         kp2, des2 = self.computeDescriptors(img2)
         return self.matchKeypointsFromDescriptors(kp1, des1, kp2, des2)
-
-    #TODO: Outsorce drawing to visualOdometry.py and add inframe drawing
-    def drawKeypointsOnImage(self, img):
-        return cv2.drawKeypoints(img, self.findKeypoints(img, self.grey), None, color=(0, 255, 0), flags=0)
