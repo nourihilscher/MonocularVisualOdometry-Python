@@ -1,4 +1,5 @@
 import cv2
+import numpy as np
 
 # TODO: Add Grid Extraction
 class FeatureExtractor:
@@ -9,7 +10,7 @@ class FeatureExtractor:
     filter_matches = False
     filter_threshold = 0.75
 
-    def __init__(self, n_features=3000, grey=False, brute_force=True, filter_matches=False, filter_threshold=0.75):
+    def __init__(self, n_features=3000, grey=False, brute_force=True, filter_matches=True, filter_threshold=0.75):
         self.nFeatures = n_features
         self.orb = cv2.ORB_create(self.nFeatures)
         self.grey = grey
@@ -31,32 +32,34 @@ class FeatureExtractor:
         else:
             return self.orb.compute(img, keypoints)
 
-    def __match(self, des1, des2):
+    def __match(self, kp1, des1, kp2, des2):
         # TODO: implement FLANN matcher and Condition
         matches = None
+        pt1 = []
+        pt2 = []
         if self.filter_matches:
-            bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
+            bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=False)
             matches = bf.knnMatch(des1, des2, k=2)
-            matches = sorted(matches, key=lambda x: x.distance)
-            good = []
             for m, n in matches:
                 # If distances are within a certain threshold, add to good matches
                 if m.distance < self.filter_threshold * n.distance:
-                    good.append([m])
-            return good
+                    pt1.append(kp1[m.queryIdx].pt)
+                    pt2.append(kp2[m.trainIdx].pt)
         else:
             bf = cv2.BFMatcher(cv2.NORM_HAMMING, crossCheck=True)
             matches = bf.match(des1, des2)
             matches = sorted(matches, key=lambda x: x.distance)
-            return matches
+            pt1 = [match.queryIdx for match in matches]
+            pt2 = [match.trainIdx for match in matches]
+        return np.float32(pt1), np.float32(pt2), matches
 
-    def matchKeypointsFromDescriptors(self, des1, des2):
-        return self.__match(des1, des2)
+    def matchKeypointsFromDescriptors(self, kp1, des1, kp2, des2):
+        return self.__match(kp1, des1, kp2, des2)
 
     def matchKeypointsFromImages(self, img1, img2):
         kp1, des1 = self.computeDescriptors(img1)
         kp2, des2 = self.computeDescriptors(img2)
-        return self.matchKeypointsFromDescriptors(des1, des2)
+        return self.matchKeypointsFromDescriptors(kp1, des1, kp2, des2)
 
     #TODO: Outsorce drawing to visualOdometry.py and add inframe drawing
     def drawKeypointsOnImage(self, img):
