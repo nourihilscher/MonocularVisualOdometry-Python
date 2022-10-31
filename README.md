@@ -1,4 +1,6 @@
 # Monocular Visual Odometry in Python
+![KITTI VIDEO](https://gifyu.com/image/SE3Hs)
+
 This repository implements the first part of an ORB-SLAM Algorithm in Python making heavy use of the OpenCV library. 
 
 The complete SLAM Algorithm ist still a work in progress. I am currently working on Loop-Closing using g2o and performance increases using own implementations of the algorithm in C++. I will add additional explanations concerning the mathematics at a later stage.
