@@ -1,5 +1,5 @@
 # Monocular Visual Odometry in Python
-![KITTI VIDEO](https://gifyu.com/image/SE3Hs)
+![KITTI VIDEO](https://s4.gifyu.com/images/ezgif.com-gif-maker396ad7fc9fb82f44.gif)
 
 This repository implements the first part of an ORB-SLAM Algorithm in Python making heavy use of the OpenCV library. 
 
